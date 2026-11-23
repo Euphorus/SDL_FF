@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 project(FingerFlicks)
 
@@ -18,7 +18,7 @@ add_subdirectory(thirdparty/SDL3_image-3.4.8)  #loading images
 add_subdirectory(thirdparty/glm)  #math
 
 
-add_executable(FingerFlicks "src/main.cpp" "src/timer.h" "src/animation.h")
+add_executable(FingerFlicks "src/main.cpp" "src/timer.h" "src/animation.h" "src/gameObject.h")
 
 if(PRODUCTION_BUILD)
 	#SETUP the assets_path macro to be in the root folder of your exe
