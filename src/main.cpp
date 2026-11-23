@@ -4,6 +4,7 @@
 #include <SDL3_image/SDL_image.h>
 #include <vector>
 #include <string>
+#include <glm/glm.hpp>
 
 #include "animation.h"
 

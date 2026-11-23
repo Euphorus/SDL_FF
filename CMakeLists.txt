@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.16)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -13,9 +13,9 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(SDLIMAGE_VENDORED OFF CACHE BOOl "" FORCE)
 
 
-add_subdirectory(thirdparty/SDL3-3.4.20)
-add_subdirectory(thirdparty/SDL3_image-3.4.8)
-add_subdirectory(thirdparty/glm)
+add_subdirectory(thirdparty/SDL3-3.4.20)  #window opener (SDL3)
+add_subdirectory(thirdparty/SDL3_image-3.4.8)  #loading images
+add_subdirectory(thirdparty/glm)  #math
 
 
 add_executable(FingerFlicks "src/main.cpp" "src/timer.h" "src/animation.h")
@@ -32,4 +32,4 @@ else()
 	target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC DEVELOPMENT_BUILD=1)
 endif()
 
-target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE SDL3::SDL3 SDL3_image::SDL3_image glm)
+target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE glm SDL3::SDL3 SDL3_image::SDL3_image)
