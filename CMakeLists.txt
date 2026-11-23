@@ -15,9 +15,10 @@ set(SDLIMAGE_VENDORED OFF CACHE BOOl "" FORCE)
 
 add_subdirectory(thirdparty/SDL3-3.4.20)
 add_subdirectory(thirdparty/SDL3_image-3.4.8)
+add_subdirectory(thirdparty/glm)
 
 
-add_executable(FingerFlicks "src/main.cpp")
+add_executable(FingerFlicks "src/main.cpp" "src/timer.h" "src/animation.h")
 
 if(PRODUCTION_BUILD)
 	#SETUP the assets_path macro to be in the root folder of your exe
@@ -31,4 +32,4 @@ else()
 	target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC DEVELOPMENT_BUILD=1)
 endif()
 
-target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE SDL3::SDL3 SDL3_image::SDL3_image)
+target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE SDL3::SDL3 SDL3_image::SDL3_image glm)
