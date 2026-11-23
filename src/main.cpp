@@ -86,13 +86,14 @@ void cleanup(SDLState& state);
 void drawOjbect(const SDLState& state, GameState& gs, GameObject& obj, float deltaTime);
 void update(SDLState& state, GameObject& obj, GameState& gs, Resources& res, float deltaTime);
 void createTiles(const SDLState& state, GameState& gs, const Resources& res);
+void checkCollision(const SDLState& state, GameState& gs, Resources& res, GameObject& a, GameObject& b, float deltatime);
 
 int main(int argc, char* argv[])
 {
 	SDLState state;
 
-	state.width = 800;
-	state.height = 800;
+	state.width = 1280;
+	state.height = 720;
 	state.logW = 640;
 	state.logH = 320;
 
@@ -226,6 +227,13 @@ void drawOjbect(const SDLState& state, GameState& gs, GameObject& obj, float del
 
 void update(SDLState& state, GameObject& obj, GameState& gs, Resources& res, float deltaTime)
 {
+	if (obj.dynamic)
+	{
+		//apply some gravity
+		obj.velocity += glm::vec2(0, 500) * deltaTime;
+	}
+	
+
 	if (obj.type == ObjectType::player)
 	{
 		float currentDirection = 0;
@@ -289,10 +297,78 @@ void update(SDLState& state, GameObject& obj, GameState& gs, Resources& res, flo
 		{
 			obj.velocity.x = currentDirection * obj.maxSpeedX;
 		}
+	}
 
-		//add velocity to position
-		obj.position += obj.velocity * deltaTime;
+	//add velocity to position
+	obj.position += obj.velocity * deltaTime;
 
+	//handle collision detection
+	for (auto& layer : gs.layers)
+	{
+
+	}
+}
+
+void collisionResponse(const SDLState& state, GameState& gs, Resources& res, const SDL_FRect& rectA, const SDL_FRect& rectB, const SDL_FRect& rectC, GameObject &objA, GameObject &objB, float deltaTime)
+{
+	//object we are checking
+	if (objA.type == ObjectType::player)
+	{
+		//object it is colliding with
+		switch (objB.type)
+		{
+			case ObjectType::level:
+			{
+				if (rectC.w < rectC.h)
+				{
+					//horizontal collision
+					if (objA.velocity.x > 0) // going right
+					{
+						objA.position.x -= rectC.w;
+					}
+					else if (objA.velocity.x < 0) //going left
+					{
+						objA.position.x += rectC.w;
+					}
+					objA.velocity.x = 0;
+				}
+				else
+				{
+					//vertical collision
+					if (objA.velocity.y > 0) // going down
+					{
+						objA.position.y -= rectC.h;
+					}
+					else if (objA.velocity.y < 0) // going up
+					{
+						objA.position.y += rectC.h;
+					}
+					objA.velocity.y = 0;
+				}
+				break;
+			}
+		}
+	}
+}
+
+//my favourite part of pure programming in programming games
+void checkCollision(const SDLState& state, GameState& gs, Resources& res, GameObject& a, GameObject& b, float deltatime)
+{
+	SDL_FRect rectA{
+		.x = a.position.x, .y = a.position.y,
+		.w = TILE_SIZE, .h = TILE_SIZE
+	};
+
+	SDL_FRect rectB{
+		.x = b.position.x, .y = b.position.y,
+		.w = TILE_SIZE, .h = TILE_SIZE
+	};
+	SDL_FRect rectC{ 0 };
+
+	if (SDL_GetRectIntersectionFloat(&rectA, &rectB, &rectC))
+	{
+		//found intersection, respond accordingly
+		collisionResponse(state, gs, res, rectA, rectB, rectC, a, b, deltatime);
 	}
 }
 
@@ -310,10 +386,10 @@ void createTiles(const SDLState& state, GameState& gs, const Resources& res)
 
 	short map[MAP_ROWS][MAP_COLS] = {
 		4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 6, 0, 2, 0, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 6, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 	};
 
 	const auto createObject = [&state](int r, int c, SDL_Texture* tex, ObjectType type)
@@ -330,18 +406,6 @@ void createTiles(const SDLState& state, GameState& gs, const Resources& res)
 		{
 			switch (map[r][c])
 			{
-			//case 4: //player
-			//	//Create our player
-			//	GameObject player = createObject(r, c, res.idleTex, ObjectType::player);
-			//	player.data.player = PlayerData();
-			//	player.texture = res.idleTex;
-			//	player.animations = res.playerAnimation;
-			//	player.currentAnimation = res.ANIM_PLAYER_IDLE;
-			//	player.acceleration = glm::vec2(300, 0);
-			//	player.maxSpeedX = 100;
-			//	gs.layers[LAYER_IDX_CHARACTERS].push_back(player);
-			//	break;
-
 				case 1:
 				{
 					//Create the "ground" part of the level
@@ -349,6 +413,15 @@ void createTiles(const SDLState& state, GameState& gs, const Resources& res)
 					gs.layers[LAYER_IDX_LEVEL].push_back(ground);
 					break;
 				}
+
+				case 2:
+				{
+					//Create the "panel" part of the level
+					GameObject panel = createObject(r, c, res.panelTex, ObjectType::level);
+					gs.layers[LAYER_IDX_LEVEL].push_back(panel);
+					break;
+				}
+
 
 				case 4: //players
 				{
@@ -360,7 +433,24 @@ void createTiles(const SDLState& state, GameState& gs, const Resources& res)
 					player.currentAnimation = res.ANIM_PLAYER_IDLE;
 					player.acceleration = glm::vec2(300, 0);
 					player.maxSpeedX = 100;
+					player.dynamic = true;
 					gs.layers[LAYER_IDX_CHARACTERS].push_back(player);
+					break;
+				}
+
+				case 5:
+				{
+					//Create the "grass" part of the level
+					GameObject grass = createObject(r, c, res.grassTex, ObjectType::level);
+					gs.layers[LAYER_IDX_LEVEL].push_back(grass);
+					break;
+				}
+
+				case 6:
+				{
+					//Create the "brick" part of the level
+					GameObject brick = createObject(r, c, res.brickTex, ObjectType::level);
+					gs.layers[LAYER_IDX_LEVEL].push_back(brick);
 					break;
 				}
 			}
