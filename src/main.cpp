@@ -31,6 +31,7 @@ struct GameState
 	std::array<std::vector<GameObject>, 2> layers;
 	std::vector<GameObject> backgroundTiles;
 	std::vector<GameObject> foregroundTiles;
+	std::vector<GameObject> bullets;
 
 	int playerIndex;
 	SDL_FRect mapViewport;
@@ -57,8 +58,13 @@ struct Resources  //it will help load and unload all of the game assets, so text
 	const int ANIM_PLAYER_SLIDE = 2; //index for the slide animation
 	std::vector<Animation> playerAnimation;
 
+	//animation integar for bullet animations
+	const int ANIM_BULLET_MOVING = 0;
+	const int ANIM_BULLET_HIT = 1;
+	std::vector<Animation> bulletAnimation;
+
 	std::vector<SDL_Texture*> textures;
-	SDL_Texture *idleTex, *runTex, *slideTex, *brickTex, *grassTex, *groundTex, *panelTex, *bg1Tex, *bg2Tex, *bg3Tex, *bg4Tex;
+	SDL_Texture *idleTex, *runTex, *slideTex, *brickTex, *grassTex, *groundTex, *panelTex, *bg1Tex, *bg2Tex, *bg3Tex, *bg4Tex, *bulletTex, *bulletHitTex;
 
 	SDL_Texture* loadTexture(SDL_Renderer *renderer, const std::string& filepath)
 	{
@@ -91,6 +97,13 @@ struct Resources  //it will help load and unload all of the game assets, so text
 		bg2Tex = loadTexture(state.renderer, RESOURCES_PATH "bg/bg_layer2.png");
 		bg3Tex = loadTexture(state.renderer, RESOURCES_PATH "bg/bg_layer3.png");
 		bg4Tex = loadTexture(state.renderer, RESOURCES_PATH "bg/bg_layer4.png");
+
+		//loading the bullet textures
+		bulletAnimation.resize(2);
+		bulletAnimation[ANIM_BULLET_MOVING] = Animation(4, 0.05f);
+		bulletAnimation[ANIM_BULLET_HIT] = Animation(4, 0.1f);
+		bulletTex = loadTexture(state.renderer, RESOURCES_PATH "bullet.png");
+		bulletHitTex = loadTexture(state.renderer, RESOURCES_PATH "bullet_hit.png");
 	}
 
 	void unload()
@@ -208,6 +221,9 @@ int main(int argc, char* argv[])
 				drawOjbect(state, gs, obj, deltaTime);
 			}
 		}
+
+		//draw bullets
+
 
 		//draw foreground tiles
 		for (GameObject& obj : gs.foregroundTiles)
@@ -348,6 +364,38 @@ void update(SDLState& state, GameObject& obj, GameState& gs, Resources& res, flo
 					}
 				}
 			}
+			if (state.keys[SDL_SCANCODE_J])
+			{
+				//spawn some bullets
+				GameObject bullet;
+				bullet.type = ObjectType::bullet;
+				bullet.direction = gs.player().direction;
+				bullet.texture = res.bulletTex;
+				bullet.currentAnimation = res.ANIM_BULLET_MOVING;
+				bullet.collider = SDL_FRect{
+					.x = 0, .y = 0,
+					.w = static_cast<float>(res.bulletTex->h),
+					.h = static_cast<float>(res.bulletTex->h)
+				};
+				bullet.velocity = glm::vec2(
+					obj.velocity.x + 600.f, 0
+				);
+				bullet.animations = res.bulletAnimation;
+				bullet.position = obj.position;
+				gs.bullets.push_back(bullet);
+			};
+
+			obj.texture = res.idleTex;
+			obj.currentAnimation = res.ANIM_PLAYER_IDLE;
+			break;
+
+		case PlayerState::running:
+			//switching to idle state
+			if (!currentDirection)
+			{
+				obj.data.player.state = PlayerState::idle;
+			}
+
 			//moving in opposite direction of velocity, sliding!!
 			if (obj.velocity.x * obj.direction < 0 && obj.grounded)
 			{
@@ -359,14 +407,7 @@ void update(SDLState& state, GameObject& obj, GameState& gs, Resources& res, flo
 				obj.texture = res.idleTex;
 				obj.currentAnimation = res.ANIM_PLAYER_IDLE;
 			}
-			break;
 
-		case PlayerState::running:
-			//switching to idle state
-			if (!currentDirection)
-			{
-				obj.data.player.state = PlayerState::idle;
-			}
 			obj.texture = res.runTex;
 			obj.currentAnimation = res.ANIM_PLAYER_RUN;
 			break;
@@ -621,7 +662,7 @@ void handleKeyInput(const SDLState &state, GameState &gs, GameObject &obj, SDL_S
 		{
 			case PlayerState::idle:
 			{
-				if (key == SDL_SCANCODE_J && keyDown)
+				if (key == SDL_SCANCODE_SPACE && keyDown)
 				{
 					obj.data.player.state = PlayerState::jumping;
 					obj.velocity.y += JUMP_FORCE;

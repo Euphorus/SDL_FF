@@ -42,11 +42,12 @@ union ObjectData
 	PlayerData player;
 	LevelData level;
 	EnemyData enemy;
+	BulletData bullet;
 };
 
 enum class ObjectType
 {
-	player, level, enemy, bullt
+	player, level, enemy, bullet
 };
 
 struct GameObject
