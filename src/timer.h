@@ -24,5 +24,5 @@ public:
 	bool isTimeout() const { return timeout; }
 	float getTime() const { return time; }
 	float getLength() const { return length; } //for animation class
-	void reset() { time = 0; }
+	void reset() { time = 0; timeout = false; }
 };
