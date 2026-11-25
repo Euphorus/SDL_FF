@@ -23,4 +23,6 @@ public:
 	{
 		timer.step(deltaTime);
 	}
+
+	bool isDone() const { return timer.isTimeout(); }
 };
