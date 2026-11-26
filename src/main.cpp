@@ -1,49 +1,47 @@
-#include <iostream>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
-#include <SDL3_image/SDL_image.h>
+#include <algorithm>
+#include <cmath>
+#include <vector>
 
 struct SDLState
 {
 	SDL_Window* window;
 	SDL_Renderer* renderer;
-	int width, height, logW, logH;
+	int width, height;
 };
-
-void cleanup(SDLState& state);
 
 int main(int argc, char* argv[])
 {
 	SDLState state;
 
-	state.width = 800;
-	state.height = 800;
-	state.logW = 640;
-	state.logH = 320;
+	state.width = 960;
+	state.height = 540;
 
-	//create the window
-	state.window = SDL_CreateWindow("SDL is working", state.width, state.height, 0);
-	if (!state.window)
+	if (!SDL_Init(SDL_INIT_VIDEO))
 	{
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "Error creating window", state.window);
-		cleanup(state);
+		SDL_Log("SDl_INIT failed: %s", SDL_GetError());
 		return 1;
 	}
 
-	//create the renderer
-	state.renderer = SDL_CreateRenderer(state.window, nullptr);
-	if (!state.renderer)
-	{
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "Error creating renderer", state.window);
-	}
+	state.window = SDL_CreateWindow("FF - FingerFlicker not FinalFantasy", state.width, state.height, SDL_WINDOW_RESIZABLE);
+	state.renderer = SDL_CreateRenderer(state.window, NULL);
+	SDL_SetRenderVSync(state.renderer, 1);
 
-	//load game assets
-	SDL_Texture* idleTex = IMG_LoadTexture(state.renderer, RESOURCES_PATH "idle.png");
+	SDL_FPoint center = { state.width / 2.0f, state.height / 2.0f };
+	
 
-	//start the gameloop
+	//setup game data
+	
+	uint64_t prevTime = ((double)SDL_GetTicks());
+
 	bool running = true;
 	while (running)
 	{
+		//get the latest time for the game
+		uint64_t nowTime = ((double)SDL_GetTicks());
+		float deltaTime = (nowTime - prevTime) / 1000.f; //to convert it to seconds
+
 		SDL_Event event{ 0 };
 		while (SDL_PollEvent(&event))
 		{
@@ -55,24 +53,22 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		//perform drawing commands
-		SDL_SetRenderDrawColor(state.renderer, 20, 30, 10, SDL_ALPHA_OPAQUE);
-		SDL_RenderClear(state.renderer);
+		//UPDATE goes here
+		
+		SDL_SetRenderDrawColor(state.renderer,235, 230, 220, 255);
+		
 
-		SDL_RenderTexture(state.renderer, idleTex, nullptr, nullptr);
-
-		//swap the buffers
+		//DRAW goes here
+		
 		SDL_RenderPresent(state.renderer);
+		
+
+		SDL_RenderClear(state.renderer);
 	}
 
-	SDL_DestroyTexture(idleTex);
-	cleanup(state);
-	return 0;
-}
-
-void cleanup(SDLState& state)
-{
 	SDL_DestroyRenderer(state.renderer);
 	SDL_DestroyWindow(state.window);
 	SDL_Quit();
+	return 0;
 }
+
