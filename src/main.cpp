@@ -25,6 +25,9 @@ struct Enemy {
 
 const float flickSpeed = 500.f;
 const float flickSpin = 14.f;
+const int startHealth = 5;
+int health = startHealth;
+int score = 0;
 
 //Pick a random spot just outside one of the 4 screen edges
 SDL_FPoint randomSpawnPoints()
@@ -52,6 +55,7 @@ SDL_FPoint randomSpawnPoints()
 
 void drawCircle(SDL_Renderer* r, SDL_FPoint center, float radius);
 void drawRotatedSquare(SDL_Renderer* r, SDL_FPoint pos, float size, float angle);
+void drawText(SDL_Renderer* r, float x, float y, float scale, const char* text);
 
 int main(int argc, char* argv[])
 {
@@ -160,6 +164,7 @@ int main(int argc, char* argv[])
 				if (dx * dx + dy * dy <= r * r)
 				{
 					SDL_Log("FLICKED");
+					score++;
 					en.flicked = true;
 					en.vel = { std::cos(angle) * flickSpeed, std::sin(angle) * flickSpeed };
 					en.spin = flickSpin;
@@ -216,6 +221,7 @@ int main(int argc, char* argv[])
 			if (dist <= playerRadius + enemyRadius)
 			{
 				SDL_Log("HIT! an enemy touched the player.");
+				health--;
 				en.alive = false;
 			}
 		}
@@ -273,6 +279,21 @@ int main(int argc, char* argv[])
 				SDL_SetRenderDrawColor(state.renderer, 240, 200, 60, 255);
 			drawRotatedSquare(state.renderer, en.pos, enemySize, en.angle);
 		}
+
+		//score
+		char buf[64];
+		SDL_SetRenderDrawColor(state.renderer, 240, 240, 240, 255);
+		SDL_snprintf(buf, sizeof(buf), "Score: %d", score);
+		drawText(state.renderer, 12, 12, 2.f, buf);
+
+		//hearts(one square per health point)
+		for (int i = 0; i < health; ++i)
+		{
+			SDL_FRect heart = { SCR_WIDTH - 30.f - i * 28.f, 14.f, 20.f, 20.f };
+			SDL_SetRenderDrawColor(state.renderer, 210, 50, 60, 255);
+			SDL_RenderFillRect(state.renderer, &heart);
+		}
+
 		SDL_RenderPresent(state.renderer);
 	}
 
@@ -308,4 +329,11 @@ void drawRotatedSquare(SDL_Renderer* r, SDL_FPoint pos, float size, float angle)
 	pts[4] = pts[0];
 	SDL_RenderLines(r, pts, 5);
 	SDL_RenderLine(r, pos.x, pos.y, pos.x + h * c, pos.y + h * s);
+}
+
+void drawText(SDL_Renderer* r, float x, float y, float scale, const char* text)
+{
+	SDL_SetRenderScale(r, scale, scale);
+	SDL_RenderDebugText(r, x / scale, y / scale, text);
+	SDL_SetRenderScale(r, 1.f, 1.f);
 }
