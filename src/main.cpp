@@ -6,7 +6,7 @@
 
 #define SCR_WIDTH 640
 #define SCR_HEIGHT 480
-bool flickPress = false;
+
 
 struct SDLState
 {
@@ -16,8 +16,15 @@ struct SDLState
 
 struct Enemy {
 	SDL_FPoint pos;
+	SDL_FPoint vel{};
+	float angle = 0.0f;
+	float spin = 0.0f;
+	bool flicked = false;
 	bool alive = true;
 };
+
+const float flickSpeed = 500.f;
+const float flickSpin = 14.f;
 
 //Pick a random spot just outside one of the 4 screen edges
 SDL_FPoint randomSpawnPoints()
@@ -44,6 +51,7 @@ SDL_FPoint randomSpawnPoints()
 }
 
 void drawCircle(SDL_Renderer* r, SDL_FPoint center, float radius);
+void drawRotatedSquare(SDL_Renderer* r, SDL_FPoint pos, float size, float angle);
 
 int main(int argc, char* argv[])
 {
@@ -66,8 +74,8 @@ int main(int argc, char* argv[])
 	const float turnSpeed = 80.f * SDL_PI_F / 180.f;
 	float angle = 0;
 	const float pointerLen = 90.f;
-	const float flickRadius = 40.f;
-	const float flickCooldown = 0.25f;
+	const float flickRadius = 35.f;
+	const float flickCooldown = 1.25f;
 	float flickTimer = 0.0f;
 	
 
@@ -92,6 +100,8 @@ int main(int argc, char* argv[])
 		prevTime = nowTime;
 		deltaTime = std::min(deltaTime, 0.05f);
 
+		bool flickPress = false;
+
 		SDL_Event event{ 0 };
 		while (SDL_PollEvent(&event))
 		{
@@ -106,7 +116,7 @@ int main(int argc, char* argv[])
 						running = false;
 
 					if (event.key.key == SDLK_SPACE && !event.key.repeat)
-						flickPress = false;
+						flickPress = true;
 					break;
 			}
 
@@ -119,11 +129,45 @@ int main(int argc, char* argv[])
 		if (keys[SDL_SCANCODE_D]) dir += 1.f;
 		
 
-		//udpate the angle
+		//ENEMY MOVE LOOP
+		//---------------------------
 		angle += dir * turnSpeed * deltaTime;
 		float c = std::cos(angle), s = std::sin(angle);
 		SDL_FPoint tip = { center.x + pointerLen * c, center.y + pointerLen * s };
+
 		if (flickTimer > 0.f) flickTimer -= deltaTime;
+		if (flickPress && flickTimer <= 0.0f)
+		{
+			flickTimer = flickCooldown;
+			for (auto& en : enemies)
+			{
+				//handle flicked enemies first
+				if (en.flicked)
+				{
+					en.pos.x += en.vel.x * deltaTime;
+					en.pos.y += en.vel.y * deltaTime;
+					en.angle += en.spin * deltaTime;
+
+					const float off = 80.f;
+					if (en.pos.x < -off || en.pos.x > SCR_WIDTH + off || en.pos.y < -off || en.pos.y > SCR_HEIGHT + off)
+						en.alive = false;
+					continue;
+				}
+
+				float dx = tip.x - en.pos.x;
+				float dy = tip.y - en.pos.y;
+				float r = flickRadius + enemyRadius;
+				if (dx * dx + dy * dy <= r * r)
+				{
+					SDL_Log("FLICKED");
+					en.flicked = true;
+					en.vel = { std::cos(angle) * flickSpeed, std::sin(angle) * flickSpeed };
+					en.spin = flickSpin;
+				}
+				
+			}
+			
+		}
 
 		//spawn enemies on a timer
 		spawnTimer -= deltaTime;
@@ -138,10 +182,27 @@ int main(int argc, char* argv[])
 		//move the enemies towards the player and check for collision
 		for (auto& en : enemies)
 		{
+
+			//flicked enemies: fly away and tumble, no chasing, no biting
+			if (en.flicked)
+			{
+				en.pos.x += en.vel.x * deltaTime;
+				en.pos.y += en.vel.y * deltaTime;
+				en.angle += en.spin * deltaTime;
+
+				const float off = 80.f;
+				if (en.pos.x < -off || en.pos.x > SCR_WIDTH + off ||
+					en.pos.y < -off || en.pos.y > SCR_HEIGHT + off)
+					en.alive = false;
+				continue;
+			}
+
 			//direction = (target - position), then shrink it to length 1
 			float dx = center.x - en.pos.x;
 			float dy = center.y - en.pos.y;
 			float dist = std::sqrt(dx * dx + dy * dy);
+
+			en.angle = std::atan2(dy, dx);
 
 			if (dist > 0.0001f)
 			{
@@ -166,13 +227,13 @@ int main(int argc, char* argv[])
 			enemies.end()
 		);
 
-		//debug log for checking the angle
-		if (dir != 0.0f)
-		{
-			float degrees = std::fmod(angle * 180.f / SDL_PI_F, 360.f);
-			if (degrees < 0.0f) degrees += 360.f;
-			SDL_Log("angle: %.1f degrees (%.3f radians)", degrees, angle);
-		}
+		////debug log for checking the angle
+		//if (dir != 0.0f)
+		//{
+		//	float degrees = std::fmod(angle * 180.f / SDL_PI_F, 360.f);
+		//	if (degrees < 0.0f) degrees += 360.f;
+		//	SDL_Log("angle: %.1f degrees (%.3f radians)", degrees, angle);
+		//}
 
 		SDL_SetRenderDrawColor(state.renderer, 30, 30, 40, 255);
 		SDL_RenderClear(state.renderer);
@@ -193,17 +254,24 @@ int main(int argc, char* argv[])
 		SDL_RenderLines(state.renderer, pts, 5);
 
 
+		if (flickTimer > 0.0f)	SDL_SetRenderDrawColor(state.renderer, 255, 255, 255, 255);
+		else					SDL_SetRenderDrawColor(state.renderer, 230, 80, 80, 255);
+		drawCircle(state.renderer, tip, flickRadius);
+
+		//tip of the finger
 		SDL_SetRenderDrawColor(state.renderer, 230, 80, 80, 255);
 		SDL_RenderLine(state.renderer, center.x, center.y, tip.x, tip.y);
-		drawCircle(state.renderer, tip, flickRadius);
 
 		
 		//enemies
 		SDL_SetRenderDrawColor(state.renderer, 240, 200, 60, 255);
 		for (const auto& en : enemies)
 		{
-			SDL_FRect r = { en.pos.x - enemySize / 2.0f, en.pos.y - enemySize / 2.0f, enemySize, enemySize };
-			SDL_RenderFillRect(state.renderer, &r);
+			if (en.flicked)
+				SDL_SetRenderDrawColor(state.renderer, 255, 255, 255, 255);
+			else
+				SDL_SetRenderDrawColor(state.renderer, 240, 200, 60, 255);
+			drawRotatedSquare(state.renderer, en.pos, enemySize, en.angle);
 		}
 		SDL_RenderPresent(state.renderer);
 	}
@@ -225,4 +293,19 @@ void drawCircle(SDL_Renderer *r, SDL_FPoint center, float radius)
 		pts[i] = { center.x + std::cos(a) * radius, center.y + std::sin(a) * radius };
 	}
 	SDL_RenderLines(r, pts, N + 1);
+}
+
+void drawRotatedSquare(SDL_Renderer* r, SDL_FPoint pos, float size, float angle)
+{
+	float h = size / 2.f, c = std::cos(angle), s = std::sin(angle);
+	const SDL_FPoint corners[4] = { {-h, -h}, {h, -h}, {h, h}, {-h, h} };
+	SDL_FPoint pts[5];
+	for (int i = 0; i < 4; i++)
+	{
+		pts[i].x = pos.x + corners[i].x * c - corners[i].y * s;
+		pts[i].y = pos.y + corners[i].x * s + corners[i].y * c;
+	}
+	pts[4] = pts[0];
+	SDL_RenderLines(r, pts, 5);
+	SDL_RenderLine(r, pos.x, pos.y, pos.x + h * c, pos.y + h * s);
 }
