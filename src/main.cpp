@@ -23,11 +23,19 @@ struct Enemy {
 	bool alive = true;
 };
 
-const float flickSpeed = 500.f;
-const float flickSpin = 14.f;
+const float flickSpeed = 600.f;
+const float flickSpin = 20.f;
 const int startHealth = 5;
 int health = startHealth;
 int score = 0;
+bool gameOver = false;
+
+float flashTimer = 0.f;
+const float flashDuration = 0.3f; //how long the red flash lasts
+
+float shakeTimer = 0.f;
+const float shakeDuration = 0.15f; //how long the shake lasts
+const float shakeStrength = 8.f;   //max shake distance in pixels
 
 //Pick a random spot just outside one of the 4 screen edges
 SDL_FPoint randomSpawnPoints()
@@ -56,6 +64,7 @@ SDL_FPoint randomSpawnPoints()
 void drawCircle(SDL_Renderer* r, SDL_FPoint center, float radius);
 void drawRotatedSquare(SDL_Renderer* r, SDL_FPoint pos, float size, float angle);
 void drawText(SDL_Renderer* r, float x, float y, float scale, const char* text);
+void drawTextCentered(SDL_Renderer* r, float y, float scale, const char* text);
 
 int main(int argc, char* argv[])
 {
@@ -75,11 +84,11 @@ int main(int argc, char* argv[])
 	SDL_FPoint center = { SCR_WIDTH / 2.0f, SCR_HEIGHT / 2.0f };
 	const float half = 40.f;
 	const float playerRadius = half;
-	const float turnSpeed = 80.f * SDL_PI_F / 180.f;
+	const float turnSpeed = 70.f * SDL_PI_F / 180.f;
 	float angle = 0;
 	const float pointerLen = 90.f;
 	const float flickRadius = 35.f;
-	const float flickCooldown = 1.25f;
+	const float flickCooldown = 0.8f;
 	float flickTimer = 0.0f;
 	
 
@@ -87,7 +96,7 @@ int main(int argc, char* argv[])
 	std::vector<Enemy> enemies;
 	const float enemySize = 24.f;
 	const float enemyRadius = enemySize / 2.0f;
-	const float enemySpeed = 40.f;
+	const float enemySpeed = 60.f;
 	const float spawnInterval = 2.f;
 	float spawnTimer = 0.0f;
 
@@ -139,13 +148,77 @@ int main(int argc, char* argv[])
 		float c = std::cos(angle), s = std::sin(angle);
 		SDL_FPoint tip = { center.x + pointerLen * c, center.y + pointerLen * s };
 
-		if (flickTimer > 0.f) flickTimer -= deltaTime;
-		if (flickPress && flickTimer <= 0.0f)
+		if (gameOver)
 		{
-			flickTimer = flickCooldown;
+			if (flickPress)
+			{
+				health = startHealth;
+				score = 0;
+				enemies.clear();
+				spawnTimer = 0.f;
+				flickTimer = 0.f;
+				gameOver = false;
+			}
+		}
+		else
+		{
+			if (flashTimer > 0.f)
+				flashTimer = std::max(0.f, flashTimer - deltaTime);
+
+			if (shakeTimer > 0.f)
+				shakeTimer = std::max(0.f, shakeTimer - deltaTime);
+
+			if (flickTimer > 0.f) flickTimer -= deltaTime;
+			if (flickPress && flickTimer <= 0.0f)
+			{
+				flickTimer = flickCooldown;
+				for (auto& en : enemies)
+				{
+					//handle flicked enemies first
+					if (en.flicked)
+					{
+						en.pos.x += en.vel.x * deltaTime;
+						en.pos.y += en.vel.y * deltaTime;
+						en.angle += en.spin * deltaTime;
+
+						const float off = 80.f;
+						if (en.pos.x < -off || en.pos.x > SCR_WIDTH + off || en.pos.y < -off || en.pos.y > SCR_HEIGHT + off)
+							en.alive = false;
+						continue;
+					}
+
+					float dx = tip.x - en.pos.x;
+					float dy = tip.y - en.pos.y;
+					float r = flickRadius + enemyRadius;
+					if (dx * dx + dy * dy <= r * r)
+					{
+						SDL_Log("FLICKED");
+						score++;
+						shakeTimer = shakeDuration;
+						en.flicked = true;
+						en.vel = { std::cos(angle) * flickSpeed, std::sin(angle) * flickSpeed };
+						en.spin = flickSpin;
+					}
+
+				}
+
+			}
+
+			//spawn enemies on a timer
+			spawnTimer -= deltaTime;
+			if (spawnTimer <= 0.0f)
+			{
+				Enemy en;
+				en.pos = randomSpawnPoints();
+				enemies.push_back(en);
+				spawnTimer = spawnInterval;
+			}
+
+			//move the enemies towards the player and check for collision
 			for (auto& en : enemies)
 			{
-				//handle flicked enemies first
+
+				//flicked enemies: fly away and tumble, no chasing, no biting
 				if (en.flicked)
 				{
 					en.pos.x += en.vel.x * deltaTime;
@@ -153,85 +226,47 @@ int main(int argc, char* argv[])
 					en.angle += en.spin * deltaTime;
 
 					const float off = 80.f;
-					if (en.pos.x < -off || en.pos.x > SCR_WIDTH + off || en.pos.y < -off || en.pos.y > SCR_HEIGHT + off)
+					if (en.pos.x < -off || en.pos.x > SCR_WIDTH + off ||
+						en.pos.y < -off || en.pos.y > SCR_HEIGHT + off)
 						en.alive = false;
 					continue;
 				}
 
-				float dx = tip.x - en.pos.x;
-				float dy = tip.y - en.pos.y;
-				float r = flickRadius + enemyRadius;
-				if (dx * dx + dy * dy <= r * r)
+				//direction = (target - position), then shrink it to length 1
+				float dx = center.x - en.pos.x;
+				float dy = center.y - en.pos.y;
+				float dist = std::sqrt(dx * dx + dy * dy);
+
+				en.angle = std::atan2(dy, dx);
+
+				if (dist > 0.0001f)
 				{
-					SDL_Log("FLICKED");
-					score++;
-					en.flicked = true;
-					en.vel = { std::cos(angle) * flickSpeed, std::sin(angle) * flickSpeed };
-					en.spin = flickSpin;
+					en.pos.x += (dx / dist) * enemySpeed * deltaTime;
+					en.pos.y += (dy / dist) * enemySpeed * deltaTime;
 				}
-				
-			}
-			
-		}
 
-		//spawn enemies on a timer
-		spawnTimer -= deltaTime;
-		if (spawnTimer <= 0.0f)
-		{
-			Enemy en;
-			en.pos = randomSpawnPoints();
-			enemies.push_back(en);
-			spawnTimer = spawnInterval;
-		}
-
-		//move the enemies towards the player and check for collision
-		for (auto& en : enemies)
-		{
-
-			//flicked enemies: fly away and tumble, no chasing, no biting
-			if (en.flicked)
-			{
-				en.pos.x += en.vel.x * deltaTime;
-				en.pos.y += en.vel.y * deltaTime;
-				en.angle += en.spin * deltaTime;
-
-				const float off = 80.f;
-				if (en.pos.x < -off || en.pos.x > SCR_WIDTH + off ||
-					en.pos.y < -off || en.pos.y > SCR_HEIGHT + off)
+				//collision: circle vs circle. they touch when
+				//the distance between centers is smaller than the two
+				//radii added together
+				if (dist <= playerRadius + enemyRadius)
+				{
+					SDL_Log("HIT! an enemy touched the player.");
+					health--;
+					flashTimer = flashDuration;
 					en.alive = false;
-				continue;
+				}
 			}
 
-			//direction = (target - position), then shrink it to length 1
-			float dx = center.x - en.pos.x;
-			float dy = center.y - en.pos.y;
-			float dist = std::sqrt(dx * dx + dy * dy);
+			//remove enemies that hit (done after the loop we don't erase while loading
+			enemies.erase(
+				std::remove_if(enemies.begin(), enemies.end(),
+					[](const Enemy& en) {return !en.alive; }),
+				enemies.end()
+			);
 
-			en.angle = std::atan2(dy, dx);
-
-			if (dist > 0.0001f)
-			{
-				en.pos.x += (dx / dist) * enemySpeed * deltaTime;
-				en.pos.y += (dy / dist) * enemySpeed * deltaTime;
-			}
-
-			//collision: circle vs circle. they touch when
-			//the distance between centers is smaller than the two
-			//radii added together
-			if (dist <= playerRadius + enemyRadius)
-			{
-				SDL_Log("HIT! an enemy touched the player.");
-				health--;
-				en.alive = false;
-			}
+			if (health <= 0) gameOver = true;
 		}
-
-		//remove enemies that hit (done after the loop we don't erase while loading
-		enemies.erase(
-			std::remove_if(enemies.begin(), enemies.end(),
-				[](const Enemy& en) {return !en.alive; }),
-			enemies.end()
-		);
+		
 
 		////debug log for checking the angle
 		//if (dir != 0.0f)
@@ -241,9 +276,20 @@ int main(int argc, char* argv[])
 		//	SDL_Log("angle: %.1f degrees (%.3f radians)", degrees, angle);
 		//}
 
-		SDL_SetRenderDrawColor(state.renderer, 30, 30, 40, 255);
+		float f = flashTimer / flashDuration;
+		SDL_SetRenderDrawColor(state.renderer, (Uint8)(30 + 130 * f), 30, 40, 255);
 		SDL_RenderClear(state.renderer);
 
+		//adding the thug shake in the game
+		float shakeX = 0.f, shakeY = 0.f;
+		if (shakeTimer > 0.f)
+		{
+			float k = shakeTimer / shakeDuration;
+			shakeX = (SDL_randf() * 2.f - 1.f) * shakeStrength * k;
+			shakeY = (SDL_randf() * 2.f - 1.f) * shakeStrength * k;
+		}
+		SDL_Rect view = { (int)shakeX, (int)shakeY, SCR_WIDTH, SCR_HEIGHT };
+		SDL_SetRenderViewport(state.renderer, &view);
 
 		//work out the 4 corner of the square, rotated
 		//corners are described around (0, 0), then rotated, then moved to the center.
@@ -268,6 +314,7 @@ int main(int argc, char* argv[])
 		SDL_SetRenderDrawColor(state.renderer, 230, 80, 80, 255);
 		SDL_RenderLine(state.renderer, center.x, center.y, tip.x, tip.y);
 
+		SDL_SetRenderViewport(state.renderer, nullptr);
 		
 		//enemies
 		SDL_SetRenderDrawColor(state.renderer, 240, 200, 60, 255);
@@ -292,6 +339,13 @@ int main(int argc, char* argv[])
 			SDL_FRect heart = { SCR_WIDTH - 30.f - i * 28.f, 14.f, 20.f, 20.f };
 			SDL_SetRenderDrawColor(state.renderer, 210, 50, 60, 255);
 			SDL_RenderFillRect(state.renderer, &heart);
+		}
+
+		if (gameOver)
+		{
+			SDL_SetRenderDrawColor(state.renderer, 240, 240, 240, 255);
+			drawTextCentered(state.renderer, 160, 4.f, "GAME OVER");
+			drawTextCentered(state.renderer, 230, 2.f, "Press SPACE to restart");
 		}
 
 		SDL_RenderPresent(state.renderer);
@@ -336,4 +390,10 @@ void drawText(SDL_Renderer* r, float x, float y, float scale, const char* text)
 	SDL_SetRenderScale(r, scale, scale);
 	SDL_RenderDebugText(r, x / scale, y / scale, text);
 	SDL_SetRenderScale(r, 1.f, 1.f);
+}
+
+void drawTextCentered(SDL_Renderer* r, float y, float scale, const char* text)
+{
+	float w = (float)SDL_strlen(text) * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * scale;
+	drawText(r, (SCR_WIDTH - w) / 2.f, y, scale, text);
 }
