@@ -122,16 +122,39 @@ int EnemyManager::flick(const Player& player)
 	return count;
 }
 
-void EnemyManager::draw(SDL_Renderer* r) const
+void EnemyManager::draw(SDL_Renderer* r, const Assets& assets, bool debug) const
 {
 	for (const auto& en : enemies)
 	{
-		if (en.flicked)
-			SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
+		if (assets.mosquitoTex)
+		{
+			//flicked mosquitoes are drawn a little see-through
+			//SDL_SetTextureAlphaMod(assets.mosquitoTex, en.flicked ? 170 : 255);
+
+			SDL_FRect dst = { en.pos.x - cfg::EnemySize / 2.f, en.pos.y - cfg::EnemySize / 2.f,
+			cfg::EnemySize, cfg::EnemySize };
+
+			SDL_RenderTextureRotated(r, assets.mosquitoTex, nullptr, &dst, en.angle * cfg::RadToDeg, nullptr, SDL_FLIP_NONE);
+		}
 		else
-			SDL_SetRenderDrawColor(r, 240, 200, 60, 255);
-		drawRotatedSquare(r, en.pos, cfg::EnemySize, en.angle);
+		{
+			if (en.flicked)
+				SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
+			else
+				SDL_SetRenderDrawColor(r, 240, 200, 60, 255);
+			drawRotatedSquare(r, en.pos, cfg::EnemySize, en.angle);
+
+		}
+
+		if (debug)
+		{
+			//SDL_SetRenderDrawColor(r, 40, 120, 220, 0);
+			//drawCircle(r, en.pos, cfg::EnemyRadius);
+		}		
 	}
+
+	if (assets.mosquitoTex)
+		SDL_SetTextureAlphaMod(assets.mosquitoTex, 255);
 }
 
 void EnemyManager::clear()

@@ -4,6 +4,7 @@
 #include <SDL3/SDL.h>
 #include <vector>
 #include "player.h"
+#include "assets.h"
 
 struct Enemy
 {
@@ -24,7 +25,7 @@ public:
 	//flicks every chasing enemy inside the fingertip zone. returns how many were flicked
 	int flick(const Player& player);
 
-	void draw(SDL_Renderer* r) const;
+	void draw(SDL_Renderer* r, const Assets& assets, bool debug) const;
 	void clear();
 
 private:

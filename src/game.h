@@ -6,6 +6,7 @@
 #include "player.h"
 #include "enemy.h"
 #include "effects.h"
+#include "assets.h"
 
 enum class GameState { Playing, GameOver };
 
@@ -28,9 +29,12 @@ private:
 	bool running = false;
 
 	GameState state = GameState::Playing;
+	Assets assets;
 	Player player;
 	EnemyManager enemies;
 	Effect effects;
+
+	bool showDebug = true;  //some key toggles the collision shapes
 
 	int health = cfg::StartHealth;
 	int score = 0;

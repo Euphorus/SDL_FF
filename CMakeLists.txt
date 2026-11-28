@@ -17,7 +17,7 @@ add_subdirectory(thirdparty/SDL3-3.4.20)
 add_subdirectory(thirdparty/SDL3_image-3.4.8)
 
 
-add_executable(FingerFlicks "src/main.cpp" "src/config.h" "src/player.h" "src/player.cpp" "src/draw.h" "src/draw.cpp" "src/effects.h" "src/effects.cpp" "src/enemy.h" "src/enemy.cpp" "src/game.h" "src/game.cpp")
+add_executable(FingerFlicks "src/main.cpp" "src/config.h" "src/player.h" "src/player.cpp" "src/draw.h" "src/draw.cpp" "src/effects.h" "src/effects.cpp" "src/enemy.h" "src/enemy.cpp" "src/game.h" "src/game.cpp"  "src/assets.h" "src/assets.cpp")
 
 if(PRODUCTION_BUILD)
 	#SETUP the assets_path macro to be in the root folder of your exe

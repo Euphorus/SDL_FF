@@ -3,6 +3,7 @@
 
 #include <SDL3/SDL.h>
 #include "config.h"
+#include "assets.h"
 
 struct Player
 {
@@ -11,9 +12,10 @@ struct Player
 	float flickTimer = 0.f;
 
 	SDL_FPoint tip() const;    //where the fingertip (flick zone center) is
+	int frame() const;
 	bool canFlick() const { return flickTimer <= 0.f; }
 	void startFlick() { flickTimer = cfg::FlickCooldown; }
 
 	void update(float dt, float turnDirection);   //-1, 0, +1
-	void draw(SDL_Renderer* r) const;
+	void draw(SDL_Renderer* r, const Assets& assets, bool debug) const;
 };
