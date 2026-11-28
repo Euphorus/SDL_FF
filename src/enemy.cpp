@@ -82,7 +82,7 @@ int EnemyManager::update(float dt, const Player& player, float gameTime)
 		//the bite: circle vs circle collision
 		if (dist <= cfg::PlayerRadius + cfg::EnemyRadius)
 		{
-			SDL_Log("HIT! an enemy touched the player.");
+			//SDL_Log("HIT! an enemy touched the player.");
 			bites++;
 			en.alive = false;
 		}
@@ -111,7 +111,7 @@ int EnemyManager::flick(const Player& player)
 		float r = cfg::FlickRadius + cfg::EnemyRadius;
 		if (dx * dx + dy * dy <= r * r)
 		{
-			SDL_Log("FLICKED");
+			//SDL_Log("FLICKED");
 			en.flicked = true;
 			en.vel = { std::cos(player.angle) * cfg::FlickSpeed,
 					  std::sin(player.angle)* cfg::FlickSpeed };
@@ -144,12 +144,6 @@ void EnemyManager::draw(SDL_Renderer* r, const Assets& assets, bool debug) const
 				SDL_SetRenderDrawColor(r, 240, 200, 60, 255);
 			drawRotatedSquare(r, en.pos, cfg::EnemySize, en.angle);
 
-		}
-
-		if (debug)
-		{
-			//SDL_SetRenderDrawColor(r, 40, 120, 220, 0);
-			//drawCircle(r, en.pos, cfg::EnemyRadius);
 		}		
 	}
 

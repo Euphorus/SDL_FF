@@ -68,26 +68,4 @@ void Player::draw(SDL_Renderer* r, const Assets& assets, bool debug) const
 		SDL_RenderTextureRotated(r, tex, nullptr, &dst, angle * cfg::RadToDeg, &pivot, SDL_FLIP_NONE);
 
 	}
-
-	//if (debug || !tex)
-	//{
-	//	//debug shapes: always shown if the art is missing
-	//	SDL_FPoint t = tip();
-
-	//	//the square body
-	//	SDL_SetRenderDrawColor(r, 70, 70, 70, 255);
-	//	drawRotatedSquare(r, pos, cfg::PlayerHalf * 2.f, angle);
-
-	//	//the finger
-	//	SDL_SetRenderDrawColor(r, 235, 40, 40, 255);
-	//	SDL_RenderLine(r, pos.x, pos.y, t.x, t.y);
-
-	//	//the flick zone: white while cooling down, red when ready
-	//	if (canFlick())
-	//		SDL_SetRenderDrawColor(r, 230, 80, 80, 255);
-	//	else
-	//		SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
-	//	drawCircle(r, t, cfg::FlickRadius);
-	//}
-	//
 }

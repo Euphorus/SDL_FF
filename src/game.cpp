@@ -2,6 +2,53 @@
 #include "draw.h"
 #include <algorithm>
 
+static bool loadSound(Sound& s, std::string filepath, float gain)
+{
+	SDL_AudioSpec spec;
+	if (!SDL_LoadWAV(filepath.c_str(), &spec, &s.data, &s.len))
+	{
+		SDL_Log("Could not load sound %s: %s", filepath.c_str(), SDL_GetError());
+		return false;
+	}
+
+	s.stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
+	if (!s.stream)
+	{
+		//SDL_Log("Could not open audio for %s: %s", filepath, SDL_GetError());
+		SDL_free(s.data);
+		s.data = nullptr;
+		s.len = 0;
+		return false;
+	}
+
+	SDL_SetAudioStreamGain(s.stream, gain);
+	SDL_ResumeAudioStreamDevice(s.stream);
+	return true;
+}
+
+static void playSound(const Sound& s)
+{
+	if (!s.stream) return;
+	SDL_ClearAudioStream(s.stream);
+	SDL_PutAudioStreamData(s.stream, s.data, (int)s.len);
+}
+
+//keeps the music looping
+static void keepMusicLooping(const Sound& m)
+{
+	if (!m.stream) return;
+	if (SDL_GetAudioStreamQueued(m.stream) < (int)m.len)
+		SDL_PutAudioStreamData(m.stream, m.data, (int)m.len);
+}
+
+static void freeSound(Sound& s)
+{
+	if (s.stream)
+		SDL_DestroyAudioStream(s.stream);
+	SDL_free(s.data);
+	s = Sound{};
+}
+
 bool Game::init()
 {
 	if (!SDL_Init(SDL_INIT_VIDEO))
@@ -16,15 +63,25 @@ bool Game::init()
 
 	if (!window || !render)
 	{
-		SDL_Log("Window/render creation failed: %s", SDL_GetError());
+		//SDL_Log("Window/render creation failed: %s", SDL_GetError());
 		return false;
 	}
+
 	SDL_SetRenderVSync(render, 1);
 
 	if (!assets.load(render))
 	{
 		SDL_Log("Some art failed to load, using placeholder shapes for it. ");
 	}
+
+	if (!SDL_InitSubSystem(SDL_INIT_AUDIO))
+		SDL_Log("Audio unavailalbe: %s", SDL_GetError());
+
+	loadSound(sndFlick, RESOURCES_PATH "sndFlick.wav", 0.8f);
+	loadSound(sndHit, RESOURCES_PATH "sndHit.wav", 0.8f);
+	loadSound(sndBite, RESOURCES_PATH "sndBite.wav", 0.9f);
+	loadSound(sndGameOver, RESOURCES_PATH "sndGameOver.wav", 0.9f);
+	loadSound(bgMusic, RESOURCES_PATH "bgMusic.wav", 0.4f);
 
 	return true;
 }
@@ -51,6 +108,11 @@ void Game::run()
 void Game::shutdown()
 {
 	assets.destroy();
+	freeSound(sndFlick);
+	freeSound(sndHit);
+	freeSound(sndBite);
+	freeSound(sndGameOver);
+	freeSound(bgMusic);
 	SDL_DestroyRenderer(render);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
@@ -108,17 +170,20 @@ void Game::update(float dt, bool flickPressed)
 		return;
 	}
 
+	keepMusicLooping(bgMusic);
 	gameTime += dt;
 
 	//flick
 	if (flickPressed && player.canFlick())
 	{
 		player.startFlick();
+		playSound(sndFlick);
 		int flicked = enemies.flick(player);
 		if (flicked > 0)
 		{
 			score += flicked;
 			effects.triggerShake();
+			playSound(sndHit);
 		}
 	}
 
@@ -128,10 +193,17 @@ void Game::update(float dt, bool flickPressed)
 	{
 		health -= bites;
 		effects.triggreFlash();
+		playSound(sndBite);
 	}
 
 	if (health <= 0)
+	{
 		state = GameState::GameOver;
+		playSound(sndGameOver);
+		SDL_ClearAudioStream(bgMusic.stream);
+	}
+	
+
 }
 
 void Game::rendertypeshi()

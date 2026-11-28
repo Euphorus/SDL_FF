@@ -7,8 +7,16 @@
 #include "enemy.h"
 #include "effects.h"
 #include "assets.h"
+#include <string>
 
 enum class GameState { Playing, GameOver };
+
+struct Sound
+{
+	SDL_AudioStream* stream = nullptr;
+	Uint8* data = nullptr;
+	Uint32 len = 0;  
+};
 
 class Game
 {
@@ -33,6 +41,7 @@ private:
 	Player player;
 	EnemyManager enemies;
 	Effect effects;
+	Sound sndFlick, sndHit, sndBite, sndGameOver, bgMusic;
 
 	bool showDebug = true;  //some key toggles the collision shapes
 
